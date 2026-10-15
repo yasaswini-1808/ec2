@@ -16,8 +16,29 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      # Step 2: Check required deployment secrets
+      - name: Check Deployment Secrets
+        id: check-secrets
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+        run: |
+          missing=()
+          [ -z "$EC2_HOST" ] && missing+=("EC2_HOST")
+          [ -z "$EC2_USER" ] && missing+=("EC2_USER")
+          [ -z "$EC2_SSH_KEY" ] && missing+=("EC2_SSH_KEY")
+
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "Missing required secrets: ${missing[*]}"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
       # Step 2: Configure SSH access to EC2
       - name: Configure SSH
+        if: steps.check-secrets.outputs.ready == 'true'
         env:
           EC2_HOST: ${{ secrets.EC2_HOST }}
           EC2_USER: ${{ secrets.EC2_USER }}
@@ -33,6 +54,7 @@ jobs:
 
       # Step 3: Connect to EC2 and deploy the container
       - name: Pull and Run Docker Container
+        if: steps.check-secrets.outputs.ready == 'true'
         env:
           EC2_HOST: ${{ secrets.EC2_HOST }}
           EC2_USER: ${{ secrets.EC2_USER }}
@@ -48,3 +70,7 @@ jobs:
                -p 8081:80 \
                nginx:alpine
              docker ps'
+
+      - name: Deployment Skipped
+        if: steps.check-secrets.outputs.ready != 'true'
+        run: echo "Skipping deployment because required EC2 secrets are not configured."
