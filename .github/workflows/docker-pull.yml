@@ -8,15 +8,12 @@ on:
 
 jobs:
   deploy:
-    # GitHub provides this runner
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Download the repository code
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # Step 2: Configure SSH access to EC2
       - name: Configure SSH
         env:
           EC2_HOST: ${{ secrets.EC2_HOST }}
@@ -31,7 +28,6 @@ jobs:
 
           ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
 
-      # Step 3: Connect to EC2 and deploy the container
       - name: Pull and Run Docker Container
         env:
           EC2_HOST: ${{ secrets.EC2_HOST }}
